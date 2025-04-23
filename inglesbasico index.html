@@ -1,0 +1,303 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Past Hero</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(120deg, #00c6ff, #0072ff);
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    .card, .menu, .level-locked {
+      background: rgba(255,255,255,0.1);
+      padding: 20px;
+      border-radius: 20px;
+      max-width: 400px;
+      margin: 40px auto;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    h1 {
+      font-size: 2.5rem;
+    }
+    .verb {
+      font-size: 1.8rem;
+      margin: 20px 0;
+    }
+    .options button, .menu button, .power button {
+      background: #fff;
+      color: #0072ff;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .options button:hover, .menu button:hover, .power button:hover {
+      background: #f1f1f1;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    #score, #coinsDisplay {
+      margin-top: 10px;
+    }
+    .meme-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 2rem;
+      z-index: 999;
+      display: none;
+    }
+    .grayscale {
+      filter: grayscale(100%);
+    }
+    .power {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="mainMenu" class="menu">
+    <h1>Past Hero 🦸‍♂️</h1>
+    <p id="streakDisplay"></p>
+    <button onclick="startGame()">🎮 Iniciar Juego</button>
+  </div>
+
+  <div id="gameScreen" class="card hidden">
+    <h1 id="levelTitle">Nivel 1</h1>
+    <p class="verb" id="verb">Loading...</p>
+    <div class="options" id="options"></div>
+    <p id="result"></p>
+    <p id="score">Puntos: 0</p>
+    <p id="coinsDisplay">🪙 Monedas: 0</p>
+    <p id="timer">⏱️ Tiempo: <span id="time">10</span>s</p>
+    <div class="power">
+      <button onclick="useSkipRound()">🟦 Saltar Ronda (50🪙)</button>
+      <button onclick="useRemoveOption()">❌ Eliminar Opción (50🪙)</button>
+    </div>
+  </div>
+
+  <div id="meme" class="meme-overlay">
+    ❌ ¡Te guayaste, mi loco!
+    <br>
+    Reiniciando nivel...
+  </div>
+
+  <audio id="failSound" src="https://www.myinstants.com/media/sounds/tralalero.mp3"></audio>
+  <audio id="correctSound" src="https://www.myinstants.com/media/sounds/meme-moaning-sound-effect.mp3"></audio>
+  <audio id="levelUpSound" src="https://www.myinstants.com/media/sounds/happy-happy-happy.mp3"></audio>
+
+  <script>
+    const levelVerbs = {
+      1: ["go", "eat", "come", "see", "do", "make", "buy", "think", "bring", "run", "play", "walk", "talk", "open", "close"],
+      2: ["write", "read", "drink", "swim", "sleep", "sit", "stand", "wear", "drive", "take", "draw", "sing", "begin", "fly", "teach"],
+      3: ["break", "choose", "cut", "fall", "feel", "find", "forget", "get", "give", "grow"],
+      4: ["hear", "keep", "know", "leave", "lose", "meet", "pay", "put", "ride", "sell"],
+      5: ["send", "show", "shut", "sing", "sit", "speak", "spend", "stand", "steal", "swim"],
+      6: ["take", "teach", "tell", "think", "throw", "understand", "wake", "wear", "win", "write"],
+      7: ["arise", "beat", "become", "bend", "bet", "bind", "bite", "bleed", "blow", "broadcast"],
+      8: ["burst", "catch", "creep", "deal", "dig", "dive", "feed", "fight", "flee", "grind"],
+      9: ["hang", "kneel", "lay", "lead", "leap", "lend", "light", "quit", "saw", "sew"],
+      10: ["shake", "shave", "shed", "shine", "shrink", "sink", "slay", "slide", "smell", "sow"]
+    };
+
+    const allVerbs = {
+      "go": "went", "eat": "ate", "come": "came", "see": "saw", "do": "did",
+      "make": "made", "buy": "bought", "think": "thought", "bring": "brought", "run": "ran",
+      "write": "wrote", "read": "read", "drink": "drank", "swim": "swam", "sleep": "slept",
+      "sit": "sat", "stand": "stood", "wear": "wore", "drive": "drove", "take": "took",
+      "play": "played", "walk": "walked", "talk": "talked", "open": "opened", "close": "closed",
+      "draw": "drew", "sing": "sang", "begin": "began", "fly": "flew", "teach": "taught",
+      "break": "broke", "choose": "chose", "cut": "cut", "fall": "fell", "feel": "felt", "find": "found", "forget": "forgot", "get": "got", "give": "gave", "grow": "grew",
+      "hear": "heard", "keep": "kept", "know": "knew", "leave": "left", "lose": "lost", "meet": "met", "pay": "paid", "put": "put", "ride": "rode", "sell": "sold",
+      "send": "sent", "show": "showed", "shut": "shut", "speak": "spoke", "spend": "spent", "steal": "stole", "throw": "threw", "understand": "understood", "wake": "woke", "win": "won",
+      "arise": "arose", "beat": "beat", "become": "became", "bend": "bent", "bet": "bet", "bind": "bound", "bite": "bit", "bleed": "bled", "blow": "blew", "broadcast": "broadcast",
+      "burst": "burst", "catch": "caught", "creep": "crept", "deal": "dealt", "dig": "dug", "dive": "dived", "feed": "fed", "fight": "fought", "flee": "fled", "grind": "ground",
+      "hang": "hung", "kneel": "knelt", "lay": "laid", "lead": "led", "leap": "leapt", "lend": "lent", "light": "lit", "quit": "quit", "saw": "sawed", "sew": "sewed",
+      "shake": "shook", "shave": "shaved", "shed": "shed", "shine": "shone", "shrink": "shrank", "sink": "sank", "slay": "slew", "slide": "slid", "smell": "smelt", "sow": "sowed"
+    };
+
+    let score = 0;
+    let coins = 0;
+    let currentLevel = 1;
+    let timer;
+    let countdown;
+    const maxLevels = 10;
+
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    function startGame() {
+      updateStreak();
+      document.getElementById('mainMenu').classList.add('hidden');
+      document.getElementById('gameScreen').classList.remove('hidden');
+      score = 0;
+      coins = 0;
+      currentLevel = 1;
+      document.getElementById('score').textContent = `Puntos: ${score}`;
+      document.getElementById('coinsDisplay').textContent = `🪙 Monedas: ${coins}`;
+      document.getElementById('levelTitle').textContent = `Nivel ${currentLevel}`;
+      newRound();
+    }
+
+    function updateStreak() {
+      const today = new Date().toDateString();
+      const lastPlayed = localStorage.getItem("lastPlayed");
+      let streak = parseInt(localStorage.getItem("streak") || "0");
+
+      if (lastPlayed) {
+        const lastDate = new Date(lastPlayed);
+        const diffTime = new Date(today).getTime() - new Date(lastDate).getTime();
+        const diffDays = diffTime / (1000 * 3600 * 24);
+        if (diffDays < 1) {
+        } else if (diffDays === 1) {
+          streak++;
+        } else {
+          streak = 1;
+        }
+      } else {
+        streak = 1;
+      }
+
+      localStorage.setItem("lastPlayed", today);
+      localStorage.setItem("streak", streak);
+      document.getElementById("streakDisplay").textContent = `🔥 Racha: ${streak} día(s)`;
+    }
+
+    function useSkipRound() {
+      if (coins >= 50) {
+        coins -= 50;
+        document.getElementById('coinsDisplay').textContent = `🪙 Monedas: ${coins}`;
+        newRound();
+      } else {
+        alert("Necesitas 50 monedas para usar este poder.");
+      }
+    }
+
+    function useRemoveOption() {
+      if (coins >= 50) {
+        coins -= 50;
+        document.getElementById('coinsDisplay').textContent = `🪙 Monedas: ${coins}`;
+        const options = [...document.querySelectorAll('#options button')];
+        let removed = 0;
+        options.forEach(btn => {
+          if (btn.textContent !== correctPast && removed < 1) {
+            btn.remove();
+            removed++;
+          }
+        });
+      } else {
+        alert("Necesitas 50 monedas para usar este poder.");
+      }
+    }
+
+    let correctPast = "";
+
+    function newRound() {
+      clearTimeout(timer);
+      clearInterval(countdown);
+      let timeLeft = 10;
+      document.getElementById('time').textContent = timeLeft;
+      countdown = setInterval(() => {
+        timeLeft--;
+        document.getElementById('time').textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(countdown);
+          showMemeEffect();
+        }
+      }, 1000);
+
+      const container = document.getElementById('options');
+      const verbElement = document.getElementById('verb');
+      const result = document.getElementById('result');
+      const meme = document.getElementById('meme');
+      result.textContent = "";
+      container.innerHTML = "";
+      document.body.classList.remove('grayscale');
+      meme.style.display = 'none';
+
+      const currentLevelVerbs = levelVerbs[currentLevel] || Object.keys(allVerbs);
+      const baseVerb = currentLevelVerbs[Math.floor(Math.random() * currentLevelVerbs.length)];
+      correctPast = allVerbs[baseVerb];
+
+      verbElement.textContent = `¿Cuál es el pasado de "${baseVerb}"?`;
+
+      const wrongOptions = Object.values(allVerbs).filter(p => p !== correctPast);
+      const options = shuffle([
+        correctPast,
+        wrongOptions[Math.floor(Math.random() * wrongOptions.length)],
+        wrongOptions[Math.floor(Math.random() * wrongOptions.length)]
+      ]);
+
+      options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.onclick = () => {
+          clearInterval(countdown);
+          if (opt === correctPast) {
+            score += 10;
+            coins += 3;
+            document.getElementById('correctSound').currentTime = 0;
+            document.getElementById('correctSound').play();
+            document.getElementById('result').textContent = "¡Correcto! ✅";
+            document.getElementById('score').textContent = `Puntos: ${score}`;
+            document.getElementById('coinsDisplay').textContent = `🪙 Monedas: ${coins}`;
+            if (score >= 300 && currentLevel < maxLevels) {
+              currentLevel++;
+              document.getElementById('levelTitle').textContent = `Nivel ${currentLevel}`;
+              score = 0;
+              document.getElementById('score').textContent = `Puntos: ${score}`;
+              const levelUpSound = document.getElementById('levelUpSound');
+              if (levelUpSound) levelUpSound.play();
+              alert(`🔓 ¡Has desbloqueado el Nivel ${currentLevel}!`);
+            }
+            setTimeout(newRound, 1000);
+          } else {
+            score = 0;
+            document.getElementById('score').textContent = `Puntos: ${score}`;
+            document.getElementById('result').textContent = `❌ Incorrecto. Era "${correctPast}".`;
+            showMemeEffect();
+          }
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function showMemeEffect() {
+      const meme = document.getElementById('meme');
+      document.body.classList.add('grayscale');
+      meme.style.display = 'flex';
+      document.getElementById('failSound').currentTime = 0;
+      document.getElementById('failSound').play();
+      setTimeout(() => {
+        document.body.classList.remove('grayscale');
+        meme.style.display = 'none';
+        document.getElementById('mainMenu').classList.remove('hidden');
+        document.getElementById('gameScreen').classList.add('hidden');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
+
